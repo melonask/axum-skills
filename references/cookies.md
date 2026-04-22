@@ -8,7 +8,7 @@ The `cookie` crate is re-exported through axum-extra — you do not add it separ
 ```toml
 [dependencies]
 axum = "0.8"
-axum-extra = { version = "0.10", features = ["cookie", "cookie-signed", "cookie-private"] }
+axum-extra = { version = "0.12.6", features = ["cookie", "cookie-signed", "cookie-private"] }
 tower-cookies = "0.11"       # required by axum-extra cookie features
 ```
 

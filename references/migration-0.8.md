@@ -61,7 +61,7 @@ async fn handler(Host(host): Host) -> String {
 Add `axum-extra` to `Cargo.toml` with the `host` feature:
 
 ```toml
-axum-extra = { version = "0.10", features = ["host"] }
+axum-extra = { version = "0.12", features = ["host"] }
 ```
 
 ---
@@ -415,7 +415,7 @@ tower-http = { version = "0.5", features = ["cors", "trace"] }
 ```toml
 [dependencies]
 axum = { version = "0.8", features = ["ws"] }
-axum-extra = { version = "0.10", features = ["typed-header", "host"] }
+axum-extra = { version = "0.12", features = ["typed-header", "host", "cookie"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace"] }

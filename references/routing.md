@@ -62,7 +62,7 @@ async fn catch_all(Path(path): Path<String>) -> String {
     format!("fallback path: {path}")
 }
 let app2 = Router::new()
-    .route("/*path", get(catch_all));
+    .route("/{*path}", get(catch_all));
 // A request to GET /anything/deep/nested yields path = "anything/deep/nested"
 ```
 
@@ -348,7 +348,7 @@ fn api_routes() -> Router {
 
 2. **Merge vs. nest confusion.** `.merge()` flattens routes to the same level; `.nest()` adds a prefix. If you merge two routers that both define `/users`, the _second_ one silently overwrites or panics. Use `.nest()` when you want isolated namespaces.
 
-3. **Catch-all greedy matching.** `/*path` matches _everything_, including `/api/health`. Place catch-all routes last (or use `.fallback()`) so specific routes are checked first. matchit resolves by specificity, but a catch-all at a high-level prefix will shadow deeper routes.
+3. **Catch-all greedy matching.** `{*path}` matches _everything_, including `/api/health`. Place catch-all routes last (or use `.fallback()`) so specific routes are checked first. matchit resolves by specificity, but a catch-all at a high-level prefix will shadow deeper routes.
 
 4. **MethodRouter does not fall through to other `.route()` calls.** If you define `.route("/items", get(handler_a))` and later `.route("/items", post(handler_b))`, the second call _replaces_ the first for that path. Chain methods on a single `.route()` call instead: `.route("/items", get(a).post(b))`.
 

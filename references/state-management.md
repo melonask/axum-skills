@@ -201,7 +201,7 @@ fn user_routes() -> Router<AppState> {
     // Handlers use State<sqlx::PgPool> via FromRef
 }
 fn cache_routes() -> Router<AppState> {
-    Router::new().route("/cache/:key", get(|| async { "cached" }))
+    Router::new().route("/cache/{key}", get(|| async { "cached" }))
     // Handlers use State<Arc<DashMap<...>>> via FromRef
 }
 

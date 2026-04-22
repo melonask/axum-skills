@@ -171,7 +171,7 @@ async fn fallible() -> Result<Json<serde_json::Value>, StatusCode> {
 
 `Sse` wraps any stream of `Event` items and sets `Content-Type: text/event-stream`. The
 connection stays open; each yielded event is sent immediately. Requires the `macros` feature
-for the `axum::extract::Event` helpers.
+for the `axum::response::sse::Event` helpers.
 
 ```rust
 use axum::{response::Sse, routing::get, Router};
@@ -179,10 +179,10 @@ use futures::stream::{self, Stream};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
 
-async fn sse_handler() -> Sse<impl Stream<Item = Result<axum::extract::Event, Infallible>>> {
+async fn sse_handler() -> Sse<impl Stream<Item = Result<axum::response::sse::Event, Infallible>>> {
     let stream = stream::iter(vec![
-        Ok(axum::extract::Event::default().data("hello")),
-        Ok(axum::extract::Event::default().data("world")),
+        Ok(axum::response::sse::Event::default().data("hello")),
+        Ok(axum::response::sse::Event::default().data("world")),
     ]);
     Sse::new(stream)
 }
@@ -522,7 +522,7 @@ SSE is a special case of streaming where each event is framed with `data:`, `eve
 `id:` fields.
 
 ```rust
-use axum::{response::Sse, routing::get, Router, extract::Event};
+use axum::{response::Sse, routing::get, Router, response::sse::Event};
 use futures::stream::{self, Stream};
 use std::{time::Duration, convert::Infallible};
 use tokio_stream::StreamExt;

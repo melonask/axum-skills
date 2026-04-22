@@ -65,20 +65,21 @@ use axum::{
 
 // Basic middleware: inspect a header and short-circuit if missing.
 async fn require_api_key(
-    headers: HeaderMap,
+    req: axum::http::Request<axum::body::Body>,
     next: middleware::Next,
 ) -> impl IntoResponse {
-    if headers.get("x-api-key").is_none() {
+    if req.headers().get("x-api-key").is_none() {
         return (StatusCode::UNAUTHORIZED, "missing x-api-key header").into_response();
     }
-    next.run(headers).await
+    next.run(req).await
 }
 
 // Basic middleware: add a response header to every successful request.
 async fn add_server_header(
+    mut req: axum::http::Request<axum::body::Body>,
     next: middleware::Next,
 ) -> impl IntoResponse {
-    let mut response = next.run(()).await;
+    let mut response = next.run(req).await;
     response.headers_mut().insert(
         "x-server",
         HeaderValue::from_static("axum-app"),
@@ -120,16 +121,17 @@ struct AppState {
 // Middleware that checks the API key against a whitelist stored in state.
 async fn check_api_key(
     State(state): State<AppState>,
-    headers: axum::http::HeaderMap,
+    req: axum::http::Request<axum::body::Body>,
     next: middleware::Next,
 ) -> impl axum::response::IntoResponse {
-    let api_key = headers
+    let api_key = req
+        .headers()
         .get("x-api-key")
         .and_then(|v| v.to_str().ok());
 
     match api_key {
         Some(key) if state.allowed_api_keys.contains(&key.to_string()) => {
-            next.run(headers).await
+            next.run(req).await
         }
         _ => (
             axum::http::StatusCode::UNAUTHORIZED,
@@ -425,7 +427,7 @@ async fn handler(Extension(user): Extension<User>) -> String {
 let state = AppState { db_pool: Arc::new("postgres://...".into()) };
 
 let app = Router::new()
-    .route("/users/:id/profile", get(handler))
+    .route("/users/{id}/profile", get(handler))
     .route_layer(middleware::from_fn(load_user))
     .with_state(state);
 ```
@@ -539,7 +541,7 @@ async fn auth_middleware(
         return Err(AuthError::InvalidToken);
     }
 
-    Ok(next.run(headers).await)
+    Ok(next.run(req).await)
 }
 
 // IMPORTANT: Use .route_layer() so the middleware error short-circuits without
@@ -577,10 +579,10 @@ struct AuthenticatedUser { user_id: u64, roles: Vec<String> }
 
 async fn jwt_auth(
     State(state): State<AuthState>,
-    headers: HeaderMap,
+    req: axum::http::Request<axum::body::Body>,
     next: middleware::Next,
 ) -> impl IntoResponse {
-    let token = match headers.get("authorization")
+    let token = match req.headers().get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
     {
@@ -598,7 +600,7 @@ async fn jwt_auth(
         roles: vec!["admin".into(), "user".into()],
     };
 
-    let mut req = next.into_request();
+    let mut req = req;
     req.extensions_mut().insert(user);
     next.run(req).await
 }
@@ -791,13 +793,17 @@ Either avoid body extraction in middleware or manually reconstruct the request.
 async fn bad_mw(body: axum::body::Bytes, next: middleware::Next) -> impl IntoResponse {
     let size = body.len();
     // body is consumed here, cannot pass to handler
-    next.run(()).await  // handler receives empty body!
+    // You must reconstruct the request or avoid consuming the body in middleware.
+    // next.run(req) with an empty body is usually wrong.
+    (axum::http::StatusCode::OK, format!("body size: {size}")).into_response()
 }
 
 // GOOD: inspect headers only, let body pass through
-async fn good_mw(headers: axum::http::HeaderMap, next: middleware::Next) -> impl IntoResponse {
-    let content_type = headers.get("content-type").cloned();
-    next.run(headers).await
+async fn good_mw(req: axum::http::Request<axum::body::Body>, next: middleware::Next) -> impl IntoResponse {
+    let content_type = req.headers().get("content-type").cloned();
+    let mut response = next.run(req).await;
+    // ... optionally inspect response
+    response
 }
 ```
 

@@ -26,7 +26,7 @@ async fn single(id: Path<u32>) {
 
 // Tuple form — matches positional capture groups
 async fn tuple(Path((user, repo)): Path<(String, String)>) {
-    // route: "/:user/:repo" → Path<(String, String)>
+    // route: "/{user}/{repo}" → Path<(String, String)>
 }
 
 // Named struct — order-independent, self-documenting
@@ -36,8 +36,8 @@ struct RepoPath { user: String, repo: String }
 async fn named(Path(RepoPath { user, repo }): Path<RepoPath>) {}
 
 let app = Router::new()
-    .route("/items/:id", get(single))
-    .route("/:user/:repo", get(named));
+    .route("/items/{id}", get(single))
+    .route("/{user}/{repo}", get(named));
 ```
 
 **Why tuples work:** serde can deserialize from a sequence (the captured segments), so
@@ -124,7 +124,7 @@ use axum::http::request::Parts;
 
 async fn misc(
     headers: HeaderMap,                    // all headers as HeaderMap
-    matched: MatchedPath,                  // e.g. "/items/:id"
+    matched: MatchedPath,                  // e.g. "/items/{id}"
     original: OriginalUri,                 // URI before any middleware rewrote it
     ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>, // client IP
     parts: Parts,                          // raw http::request::Parts
@@ -139,7 +139,7 @@ async fn misc(
 ```
 
 **Why `MatchedPath` differs from the actual URI:** A request to `/items/42` has URI
-`/items/42`, but `MatchedPath` returns the route pattern `/items/:id`. This is essential
+`/items/42`, but `MatchedPath` returns the route pattern `/items/{id}`. This is essential
 for metrics — you want to group by route, not by every distinct URL.
 
 ---

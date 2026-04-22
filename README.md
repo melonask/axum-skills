@@ -1,12 +1,8 @@
-# axum — Rust Web Framework Skill
+# axum-skills
 
 A comprehensive skill for building web applications and APIs with [axum](https://github.com/tokio-rs/axum) (by tokio-rs). This skill enables LLM developers to build production-ready HTTP services in Rust using axum's ergonomic handler-based API, its deep integration with the Tower middleware ecosystem, and the full power of async Rust via Tokio.
 
-```bash
-npx skills add melonask/axum-skills
-```
-
-## What This Skill Covers
+## Overview
 
 This skill provides complete guidance for every major feature of the axum framework (version 0.8.x), including:
 
@@ -23,7 +19,13 @@ This skill provides complete guidance for every major feature of the axum framew
 - **Testing** — Unit and integration testing with tower::ServiceExt
 - **Migration** — Upgrading from axum 0.7 to 0.8
 
-## Skill Structure
+## Installation
+
+```bash
+npx skills add melonask/axum-skills
+```
+
+## File Structure
 
 ```
 axum/
@@ -44,28 +46,6 @@ axum/
     └── migration-0.8.md              # Migration guide from axum 0.7 to 0.8
 ```
 
-## How It Works
-
-The skill uses a **progressive disclosure** architecture:
-
-1. **SKILL.md** (always loaded) — Provides crate architecture, quick-start setup, feature flags, 6 core code patterns, key concepts, and a routing table pointing to reference files
-2. **references/\*.md** (loaded on demand) — When a user's request involves a specific area (e.g., middleware, cookies, WebSocket), the LLM reads the corresponding reference file for in-depth guidance with additional code examples and edge cases
-
-This keeps the initial context small while making detailed information available when needed.
-
-## Compatible Versions
-
-| Crate         | Version                 |
-| ------------- | ----------------------- |
-| `axum`        | 0.8.x (latest: 0.8.9)   |
-| `axum-core`   | 0.5.x (latest: 0.5.6)   |
-| `axum-extra`  | 0.12.x (latest: 0.12.6) |
-| `axum-macros` | 0.5.x (latest: 0.5.1)   |
-| `tower-http`  | 0.6.x                   |
-| `tower`       | 0.5.x                   |
-| `tokio`       | 1.x                     |
-| `hyper`       | 1.4+                    |
-
 ## Quick Start
 
 ```toml
@@ -85,6 +65,28 @@ let app = Router::new().route("/", get(|| async { "Hello, World!" }));
 let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 serve(listener, app).await.unwrap();
 ```
+
+## Compatible Versions
+
+| Crate         | Version                 |
+| ------------- | ----------------------- |
+| `axum`        | 0.8.x (latest: 0.8.9)   |
+| `axum-core`   | 0.5.x (latest: 0.5.6)   |
+| `axum-extra`  | 0.12.x (latest: 0.12.6) |
+| `axum-macros` | 0.5.x (latest: 0.5.1)   |
+| `tower-http`  | 0.6.x                   |
+| `tower`       | 0.5.x                   |
+| `tokio`       | 1.x                     |
+| `hyper`       | 1.4+                    |
+
+## How It Works
+
+The skill uses a **progressive disclosure** architecture:
+
+1. **SKILL.md** (always loaded) — Provides crate architecture, quick-start setup, feature flags, 6 core code patterns, key concepts, and a routing table pointing to reference files
+2. **references/\*.md** (loaded on demand) — When a user's request involves a specific area (e.g., middleware, cookies, WebSocket), the LLM reads the corresponding reference file for in-depth guidance with additional code examples and edge cases
+
+This keeps the initial context small while making detailed information available when needed.
 
 ## Key Design Principles
 

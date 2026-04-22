@@ -37,7 +37,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_greet() {
-        let app = Router::new().route("/hello/:name", get(greet));
+        let app = Router::new().route("/hello/{name}", get(greet));
         let res = app
             .oneshot(Request::builder().uri("/hello/world").body(Body::empty()).unwrap())
             .await
@@ -114,7 +114,7 @@ mod tests {
         db.insert("1".into(), "Alice".into());
         let state = AppState { db: Arc::new(db) };
         let app = Router::new()
-            .route("/users/:id", get(get_user))
+            .route("/users/{id}", get(get_user))
             .with_state(state.clone());
         (app, state)
     }
@@ -320,7 +320,7 @@ mod error_tests {
 
     #[tokio::test]
     async fn division_by_zero_returns_400_with_error_body() {
-        let app = Router::new().route("/divide/:a/:b", get(divide));
+        let app = Router::new().route("/divide/{a}/{b}", get(divide));
         let res = app
             .oneshot(Request::builder().uri("/divide/10/0").body(Body::empty()).unwrap())
             .await
@@ -335,7 +335,7 @@ mod error_tests {
 
     #[tokio::test]
     async fn unknown_route_returns_404() {
-        let app = Router::new().route("/divide/:a/:b", get(divide));
+        let app = Router::new().route("/divide/{a}/{b}", get(divide));
         let res = app
             .oneshot(Request::builder().uri("/nonexistent").body(Body::empty()).unwrap())
             .await

@@ -305,7 +305,7 @@ SSE provides a unidirectional stream from server to client. The `Sse` type wraps
 use axum::response::sse::{Event, Sse, KeepAlive};
 use std::convert::Infallible;
 
-async fn sse_handler() -> Sse<impl futures_core::stream::Stream<Item = Result<Event, Infallible>>> {
+async fn sse_handler() -> Sse<impl futures_util::stream::Stream<Item = Result<Event, Infallible>> {
     let stream = async_stream::stream! {
         for i in 0..10 {
             yield Ok(Event::default()

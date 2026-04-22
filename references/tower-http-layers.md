@@ -99,7 +99,7 @@ features = ["compression-gzip", "compression-br", "compression-deflate", "decomp
 
 ```rust
 use axum::{routing::{get, post}, Router, extract::Bytes};
-use tower_http::{compression::{CompressionLayer, compression::CompressionLevel},
+use tower_http::{compression::CompressionLayer, CompressionLevel,
                  decompression::DecompressionLayer};
 
 let app = Router::new()
@@ -333,6 +333,8 @@ let app = Router::new().route("/api/users", get(|| async { "users" }))
 
 ## 14. RequireAuthorizationLayer
 
+> **Note:** `RequireAuthorizationLayer` (sync) was removed in tower-http 0.6. Use `AsyncRequireAuthorizationLayer` instead.
+
 Enforces HTTP auth before requests reach handlers, rejecting with 401 immediately.
 Place on specific route groups so public routes remain accessible.
 
@@ -341,18 +343,36 @@ features = ["auth"]
 ```
 
 ```rust
-use axum::{routing::get, Router, response::IntoResponse};
-use tower_http::auth::RequireAuthorizationLayer;
-use http::{HeaderValue, StatusCode};
+use axum::{routing::get, Router};
+use tower_http::auth::AsyncRequireAuthorizationLayer;
+use http::StatusCode;
 
-// Basic auth with custom rejection
-let basic = Router::new().route("/protected", get(|| async { "secret" }))
-    .layer(RequireAuthorizationLayer::basic("admin", "secret")
-        .on_unauthorized(StatusCode::FORBIDDEN.into_response()));
+#[derive(Clone)]
+struct BasicAuth;
 
-// Bearer token auth
-let bearer = Router::new().route("/api", get(|| async { "protected" }))
-    .layer(RequireAuthorizationLayer::bearer(HeaderValue::from_static("my-secret-token")));
+impl<B> tower_http::auth::AsyncAuthorizeRequest<B> for BasicAuth {
+    type Request = axum::http::Request<B>;
+    type Response = axum::response::Response;
+    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Request, Self::Response>> + Send>>;
+
+    fn authorize(&self,
+        mut request: axum::http::Request<B>,
+    ) -> Self::Future {
+        Box::pin(async move {
+            match request.headers().get(http::header::AUTHORIZATION) {
+                Some(h) if h == "Bearer my-secret-token" => Ok(request),
+                _ => {
+                    let response = (StatusCode::UNAUTHORIZED, "unauthorized").into_response();
+                    Err(response)
+                }
+            }
+        })
+    }
+}
+
+let app = Router::new()
+    .route("/protected", get(|| async { "secret" }))
+    .layer(AsyncRequireAuthorizationLayer::new(BasicAuth));
 ```
 
 ---
