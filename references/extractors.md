@@ -443,6 +443,74 @@ async fn flexible(
 could silently swallow parse errors. In 0.8, `OptionalFromRequestParts` is the dedicated
 trait, and its behavior is more predictable — it always returns `None` on failure.
 
+### ⚠️ Silent Failure Trap with TypedHeader and Malformed Data
+
+A common mistake is assuming `Option<TypedHeader<T>>` returns `None` for all failure cases:
+
+```rust
+// DANGEROUS: Will reject with 400 if header is present but malformed
+async fn handler(altcha: Option<TypedHeader<XAltchaSolution>>) -> Result<Json<()>, AppError> {
+    // If client sends a well-formed header → extracted
+    // If header is absent → None (safe)
+    // If header is PRESENT but malformed (e.g., bad Base64) → REQUEST REJECTED with 400!
+}
+```
+
+In axum 0.8, if a header is **present** but fails to parse (Base64 decode error, invalid format, etc.), the extractor **rejects the request** rather than returning `None`. This breaks the "optional" assumption.
+
+**The fix: Extract HeaderMap and parse manually**
+
+```rust
+use axum::{
+    extract::HeaderMap,
+    response::IntoResponse,
+};
+use base64::Engine;
+
+#[derive(Debug)]
+enum AppError {
+    AltchaParseFailed(String),
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            AppError::AltchaParseFailed(msg) => {
+                (StatusCode::BAD_REQUEST, format!(r#"{{"error":"altcha_parse_failed","details":"{}"}}"#, msg))
+            }
+        };
+        (status, message).into_response()
+    }
+}
+
+fn parse_altcha_header(headers: &HeaderMap) -> Result<AltchaPayload, AppError> {
+    let header = headers
+        .get("X-Altcha")
+        .ok_or_else(|| AppError::AltchaParseFailed("header missing".into()))?;
+
+    let header_str = header
+        .to_str()
+        .map_err(|_| AppError::AltchaParseFailed("invalid header encoding".into()))?;
+
+    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(header_str)
+        .map_err(|e| AppError::AltchaParseFailed(format!("base64 decode error: {}", e)))?;
+
+    serde_json::from_slice(&decoded)
+        .map_err(|e| AppError::AltchaParseFailed(format!("json parse error: {}", e)))
+}
+
+async fn handler(headers: HeaderMap) -> Result<Json<()>, AppError> {
+    let altcha = parse_altcha_header(&headers)?;
+    // use altcha...
+    Ok(Json(()))
+}
+```
+
+**Key differences:**
+- `Option<TypedHeader<T>>` → returns `None` only if header is **absent**
+- `HeaderMap` + manual parse → full control over error handling, returns your custom JSON error
+
 ---
 
 ## 6. Extractor Ordering Rules

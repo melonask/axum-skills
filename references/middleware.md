@@ -8,15 +8,16 @@ All code examples are fully self-contained and runnable.
 - [Axum 0.8.x Middleware Reference](#axum-08x-middleware-reference)
   - [Table of Contents](#table-of-contents)
   - [Why Axum Middleware Works the Way It Does](#why-axum-middleware-works-the-way-it-does)
-  - [middleware::from\_fn](#middlewarefrom_fn)
-  - [middleware::from\_fn\_with\_state](#middlewarefrom_fn_with_state)
-  - [middleware::map\_request](#middlewaremap_request)
-  - [middleware::map\_response](#middlewaremap_response)
+  - [middleware::from_fn](#middlewarefrom_fn)
+  - [middleware::from_fn_with_state](#middlewarefrom_fn_with_state)
+  - [middleware::map_request](#middlewaremap_request)
+  - [middleware::map_response](#middlewaremap_response)
   - [Applying Middleware to Specific Routes](#applying-middleware-to-specific-routes)
   - [Layer on Router vs MethodRouter](#layer-on-router-vs-methodrouter)
   - [Composing Multiple Middleware](#composing-multiple-middleware)
   - [Tower Layers as Middleware](#tower-layers-as-middleware)
   - [Custom Middleware with Extractors](#custom-middleware-with-extractors)
+    - [Dynamic Configuration in Middleware (x402 integration)](#dynamic-configuration-in-middleware-x402-integration)
   - [Request/Response Modification Patterns](#requestresponse-modification-patterns)
     - [Adding Request IDs](#adding-request-ids)
     - [Logging Middleware](#logging-middleware)
@@ -32,7 +33,7 @@ All code examples are fully self-contained and runnable.
     - [3. State Mismatch with `from_fn_with_state`](#3-state-mismatch-with-from_fn_with_state)
     - [4. Double-Processing with `.route_layer()` and `.layer()`](#4-double-processing-with-route_layer-and-layer)
     - [5. Forgetting `IntoResponse` for Error Types](#5-forgetting-intoresponse-for-error-types)
-    - [6. Async Block Captures in from\_fn Closures](#6-async-block-captures-in-from_fn-closures)
+    - [6. Async Block Captures in from_fn Closures](#6-async-block-captures-in-from_fn-closures)
 
 ---
 
@@ -435,6 +436,22 @@ let app = Router::new()
 **Why Extension is the bridge**: Extensions are a type map attached to the request. Middleware can
 insert data into extensions, and downstream handlers can extract it with `Extension<T>`. This is the
 standard pattern for passing middleware-computed data to handlers.
+
+### Dynamic Configuration in Middleware (x402 integration)
+
+When using complex middleware (like `x402-axum`) that needs to read dynamic configuration, use `axum::Extension` to inject the `Arc<Config>` so the middleware callback can access it:
+
+```rust
+let catalog: Arc<Catalog> = Arc::new(load_toml_catalog());
+
+let app = Router::new()
+    .route("/api/tasks/{kind}", get(handler))
+    .layer(axum::Extension(catalog)) // Inject first!
+    .layer(middleware::from_fn(|Extension(cat): Extension<Arc<Catalog>>, req, next| async move {
+        // Use `cat` to dynamically set x402 prices
+        next.run(req).await
+    }));
+```
 
 ---
 
