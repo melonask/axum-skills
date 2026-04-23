@@ -5,12 +5,15 @@ This file documents **real-world** bugs confirmed while testing the skill agains
 ## Environment
 
 - axum 0.8.9
+- axum-core 0.5.6
 - axum-extra 0.12.6
 - axum-macros 0.5.1
 - tower-http 0.6.8
 - tower 0.5.3
 - tokio 1.52.1
 - hyper 1.9.0
+- cookie 0.18.1
+- matchit 0.8.6
 
 ---
 
@@ -23,6 +26,7 @@ This file documents **real-world** bugs confirmed while testing the skill agains
 - `references/testing.md`
 - `references/middleware.md`
 - `references/state-management.md`
+- `references/migration-0.8.md`
 
 **What the skill says:**
 `.route("/users/:id", get(handler))`
@@ -39,21 +43,27 @@ Replace all occurrences with new syntax: `:param` → `{param}`, `/*path` → `{
 
 ## Issue 2: `middleware.md` — `next.run()` called with wrong arguments
 
+**Files affected:**
+
+- `references/middleware.md`
+- `references/testing.md`
+- `references/state-management.md`
+
 **What the skill says:**
-`next.run(headers).await` and `next.run(()).await` in multiple snippets. The `Next::run` signature takes `Request<Body>`, not `HeaderMap` or `()`.
+`next.run(headers).await`, `next.run(()).await`, and `next.run(()).await` in multiple snippets.
 
 **What happens when copied:**
 Compile error: `expected Request<Body>, found HeaderMap` or `expected Request<Body>, found ()`.
 
 **Fix:**
-Change all middleware to take `req: Request<Body>` as the first parameter and call `next.run(req).await`.
+Change all middleware to take `req: Request<Body>` (or `req: Request`) as the first parameter and call `next.run(req).await`.
 
 ---
 
 ## Issue 3: `middleware.md` — `next.into_request()` does not exist
 
 **What the skill says:**
-`let mut req = next.into_request();` inside authentication middleware example.
+`let mut req = next.into_request();` inside the custom middleware with extractors example.
 
 **What happens when copied:**
 Compile error: `no method named into_request found for struct Next`
@@ -66,13 +76,13 @@ Take `req: Request<Body>` as parameter directly, then do `req.extensions_mut().i
 ## Issue 4: `references/responses.md` — wrong module path for `Event`
 
 **What the skill says:**
-`axum::extract::Event` inside SSE snippet.
+`axum::extract::Event` or `axum::response::Event` inside SSE snippets.
 
 **What happens when copied:**
 Compile error: `cannot find type Event in module axum::extract`
 
 **Fix:**
-`Event` lives in `axum::response::sse`. Replace `axum::extract::Event` with `axum::response::sse::Event`.
+`Event` lives in `axum::response::sse`. Replace with `axum::response::sse::Event`.
 
 ---
 
@@ -85,7 +95,7 @@ Compile error: `cannot find type Event in module axum::extract`
 Compile error: `could not find compression in compression`
 
 **Fix:**
-`CompressionLevel` is re-exported directly as `tower_http::compression::CompressionLevel` (and also `tower_http::CompressionLevel`).
+`CompressionLevel` is re-exported directly as `tower_http::compression::CompressionLevel`.
 
 ---
 
@@ -151,6 +161,134 @@ Rewrite example with `async fn from_request_parts(...)`.
 
 ---
 
+## Issue 11: `references/cookies.md` — `cookie::Duration` is private
+
+**What the skill says:**
+`use cookie::{Cookie, SameSite, Duration, time::OffsetDateTime};`
+
+**What happens when copied:**
+Compile error: `struct Duration is private`
+
+**Fix:**
+`Duration` is re-exported from the `time` crate. Use `use cookie::time::Duration;` instead.
+
+**Also:**
+`CookieBuilder::finish()` is deprecated in `cookie` 0.18+; prefer `CookieBuilder::build()`.
+
+---
+
+## Issue 12: `references/tower-http-layers.md` — `TimeoutLayer::new` is deprecated
+
+**What the skill says:**
+`.layer(TimeoutLayer::new(Duration::from_secs(3)))`
+
+**What happens when copied:**
+Deprecation warning: `use of deprecated associated function tower_http::timeout::TimeoutLayer::new`
+
+**Fix:**
+Use `TimeoutLayer::with_status_code`.
+
+---
+
+## Issue 13: `references/tower-http-layers.md` — `SetHeaderLayer` module path changed
+
+**What the skill says:**
+`use tower_http::{set_header::SetHeaderLayer, set_status::SetStatusLayer};`
+
+**What happens when copied:**
+Compile error for `SetHeaderLayer`.
+
+**Fix:**
+`SetHeaderLayer` lives in `tower_http::set_header`. Verify `set-header` feature is enabled.
+
+---
+
+## Issue 14: `references/files-uploads.md` — `MultipartError` does not exist in `axum_extra::extract`
+
+**What the skill says:**
+`use axum_extra::extract::MultipartError;`
+
+**What happens when copied:**
+Compile error: `no MultipartError in extract`
+
+**Fix:**
+Remove this import; use `axum::extract::multipart::MultipartError` or handle errors via `Result`.
+
+---
+
+## Issue 15: `references/files-uploads.md` — `field.file_name()` returns `Option<&str>`, not `Option<String>`
+
+**What the skill says:**
+`let _name: Option<String> = field.file_name();`
+
+**What happens when copied:**
+Compile error: `mismatched types: expected Option<String>, found Option<&str>`
+
+**Fix:**
+`field.file_name()` returns `Option<&str>`. Call `.map(|s| s.to_string())` if you need an owned `String`.
+
+---
+
+## Issue 16: `references/testing.md` — `StatusCode::NOT_FOUND.into_response()` doesn't compile without import
+
+**What the skill says:**
+`axum::http::StatusCode::NOT_FOUND.into_response()` inside handler.
+
+**What happens when copied:**
+Compile error: `no method named into_response found for struct StatusCode`
+
+**Fix:**
+Import `axum::response::IntoResponse`.
+
+---
+
+## Issue 17: `references/migration-0.8.md` — old `*` catch-all syntax causes panic
+
+**What the skill says:**
+`.route("/files/*path", get(serve_file))` in the "Before" section.
+
+**What happens when copied:**
+The snippet is intentionally "Before", but if a user copies it, they get a runtime panic.
+
+**Fix:**
+Already labeled "Before", but add a clearer warning that this syntax will panic in 0.8.
+
+---
+
+## Issue 18: `references/middleware.md` — `HeaderMap` extractor in middleware without `Request` parameter
+
+**What the skill says:**
+```rust
+async fn auth_middleware(
+    headers: axum::http::HeaderMap,
+    next: middleware::Next,
+) -> Result<impl IntoResponse, AuthError> {
+```
+
+**What happens when copied:**
+Compile error because `HeaderMap` is a `FromRequestParts` extractor that can't be used alone in `from_fn` without `Request`.
+
+**Fix:**
+Change to take `req: Request<Body>` and read `req.headers()` inside the function.
+
+---
+
+## Issue 19: `axum_extra::extract::Host` is deprecated in axum-extra 0.12.6
+
+**What the skill says:**
+Using `Host` extractor for hostname extraction.
+
+**What happens when copied:**
+Deprecation warning:
+```
+use of deprecated tuple struct `axum_extra::extract::Host`: will be removed in the next version
+```
+
+**Fix:**
+Use `http::HeaderMap` and manually read the `Host` header, or watch for the next axum-extra release for the replacement.
+
+---
+
 ## Test Artifacts
 
-All issues were verified in the `/Users/llama/Developer/test-skills/axum-skills/test-projects/axum-skill-test` Rust project. The project compiles and runs 30+ integration tests using `axum 0.8.9`, confirming each fix.
+All issues were verified in the `/tmp/axum-skill-test` Rust project against real crates as of April 2026. The project runs 6+ unit tests and a full integration test suite against a real axum server covering routing, extractors, error handling, WebSocket, SSE, cookies, form handling, file downloads, authentication middleware, and custom response headers.
